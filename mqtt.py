@@ -12,15 +12,20 @@ db = DbManager(data["mysql"]["host"], data["mysql"]["user"],
                data["mysql"]["passwd"], data["mysql"]["db"])
 
 topic = "AERlab/WaterTanks/Tank1/Temperature/Data/+"
-values = [None] * 5
+TDtopic = "AERlab/WaterTanks/Tank2/Temperature/Data/+" 
+PVSvalues = [None] * 5
+TDvalues = [None] * 2
 
 def on_message(client, userdata, message):
     print("message received " ,str(message.payload.decode("utf-8")))
     print("message topic=",message.topic)
     print("message qos=",message.qos)
     print("message retain flag=",message.retain)
-    values[int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
- 
+    if(message.topic[:23] == "AERlab/WaterTanks/Tank1"):
+        PVSvalues[int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+    else:
+        TDvalues[int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+
 def on_connect(client, userdata, flags, rc):
     
     if rc == 0:
@@ -49,17 +54,25 @@ client.loop_start() #start the loop
 
 print("Subscribing to topic",topic)
 client.subscribe(topic)
+client.subscribe(TDtopic)
 
 try:
     while(1):
         time.sleep(300) # wait
         print("Writing values to database: ")
-        print(values) 
+        print("PV Solar Boiler", PVSvalues) 
         try:
-            if(db.insertData(6, 5, ["NUll"] + values)):
+            if(db.insertData(6, 5, ["NUll"] + PVSvalues)):
        	        print("Inserted Data")
             else:
                 print("Failed to insert data")
+            
+            print("ThermoDynamics Tank", TDvalues)
+            if(db.insertData(7, 2, ["NUll"] + TDvalues)):
+                print("Inserted Data")
+            else:
+                print("Failed to insert data")
+
         except Exception as e:
             print(e)
 except KeyboardInterrupt:

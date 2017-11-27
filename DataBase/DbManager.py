@@ -59,7 +59,7 @@ class DbManager:
             query += "`Sensor" + `(i+1)` + "` double,"
         query = query[:-1]
         query += ');'
-
+        
         try:
             self.c.execute(query)
             return True
