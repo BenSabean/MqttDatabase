@@ -38,4 +38,3 @@ class DataEntry:
         except:
             self.db.rollback()
         return False
-        

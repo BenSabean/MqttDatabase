@@ -13,8 +13,10 @@ db = DbManager(data["mysql"]["host"], data["mysql"]["user"],
 
 topic = "AERlab/WaterTanks/Tank1/Temperature/Data/+"
 TDtopic = "AERlab/WaterTanks/Tank2/Temperature/Data/+" 
+EEtopic = "Home/EnergyMonitor/EagleEye/Current/Data/+"
 PVSvalues = [None] * 5
 TDvalues = [None] * 2
+EEvalues = [None] * 8
 
 def on_message(client, userdata, message):
     print("message received " ,str(message.payload.decode("utf-8")))
@@ -23,6 +25,21 @@ def on_message(client, userdata, message):
     print("message retain flag=",message.retain)
     if(message.topic[:23] == "AERlab/WaterTanks/Tank1"):
         PVSvalues[int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+    elif(message.topic[:27] == "Home/EnergyMonitor/EagleEye"):
+        EEvalues[int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+        print("Eagle Eye", EEvalues)
+        if(db.insertData(8, 8, ["NUll"] + EEvalues)):
+            print("Inserted Data")
+            EEvalues[0] = None
+            EEvalues[1] = None
+            EEvalues[2] = None
+            EEvalues[3] = None
+            EEvalues[4] = None
+            EEvalues[5] = None
+            EEvalues[6] = None
+            EEvalues[7] = None
+        else:
+            print("Failed to insert data")
     else:
         TDvalues[int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
 
@@ -54,7 +71,10 @@ client.loop_start() #start the loop
 
 print("Subscribing to topic",topic)
 client.subscribe(topic)
+print("Subscribing to topic",TDtopic)
 client.subscribe(TDtopic)
+print("Subscribing to topic",EEtopic)
+client.subscribe(EEtopic)
 
 try:
     while(1):
@@ -73,6 +93,11 @@ try:
             else:
                 print("Failed to insert data")
 
+            #print("Eagle Eye", EEvalues)
+            #if(db.insertData(8, 8, ["NUll"] + EEvalues)):
+            #    print("Inserted Data")
+            #else:
+            #    print("Failed to insert data")
         except Exception as e:
             print(e)
 except KeyboardInterrupt:
