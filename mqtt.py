@@ -1,15 +1,39 @@
 from DataBase.DbManager import DbManager
 from threading import Thread
+from Queue import Queue
+import threading
 import paho.mqtt.client as mqtt #MQTT client
 import time
 import datetime
 import json
+
+class ModuleThread(Thread):
+    def __init__ (self, myIndex, myInterval, mySensors):
+        Thread.__init__(self)
+        self.index = myIndex
+        self.interval = myInterval
+        self.sensors = mySensors
+    
+    def run(self):
+        time.sleep(1)
+        while True:
+            time.sleep(60*self.interval)
+            q.join()
+            print("Attempting to log data...")
+            print datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            #q.put([self.index, self.sensors])
+            q.put(dict([('index', self.index), ('sensors', self.sensors)]))
+
 
 with open('config.json') as json_data_file:
     data = json.load(json_data_file)
 
 db = DbManager(data["mysql"]["host"], data["mysql"]["user"],
                data["mysql"]["passwd"], data["mysql"]["db"])
+
+threads = []
+q = Queue()
 
 topic = "AERlab/WaterTanks/Tank1/Temperature/Data/+"
 TDtopic = "AERlab/WaterTanks/Tank2/Temperature/Data/+" 
@@ -19,10 +43,10 @@ TDvalues = [None] * 2
 EEvalues = [None] * 8
 
 def on_message(client, userdata, message):
-    print("message received " ,str(message.payload.decode("utf-8")))
-    print("message topic=",message.topic)
-    print("message qos=",message.qos)
-    print("message retain flag=",message.retain)
+    #print("message received " ,str(message.payload.decode("utf-8")))
+    #print("message topic=",message.topic)
+    #print("message qos=",message.qos)
+    #print("message retain flag=",message.retain)
     if(message.topic[:23] == "AERlab/WaterTanks/Tank1"):
         PVSvalues[int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
     elif(message.topic[:27] == "Home/EnergyMonitor/EagleEye"):
@@ -76,22 +100,38 @@ client.subscribe(TDtopic)
 print("Subscribing to topic",EEtopic)
 client.subscribe(EEtopic)
 
+print("Spawning thread 1")
+thModule = ModuleThread(1, db.getSampleRate(1), 5)
+thModule.daemon = True
+thModule.start()
+threads.append(thModule)
+
+print("Spawning thread 2")
+thModule = ModuleThread(2, db.getSampleRate(2), 2)
+thModule.daemon = True
+thModule.start()
+threads.append(thModule)
+
+data = []
+
 try:
     while(1):
-        time.sleep(300) # wait
-        print("Writing values to database: ")
-        print("PV Solar Boiler", PVSvalues) 
+        #time.sleep(300) # wait
+        module = q.get()
+        data = [PVSvalues, TDvalues, EEvalues]
+        print("Writing values to database: " + `module["index"]`)
+        #print("PV Solar Boiler", PVSvalues) 
         try:
-            if(db.insertData(6, 5, ["NUll"] + PVSvalues)):
+            if(db.insertData(module["index"], module["sensors"], ["NUll"] + data[module["index"]-1])):
        	        print("Inserted Data")
             else:
                 print("Failed to insert data")
             
-            print("ThermoDynamics Tank", TDvalues)
-            if(db.insertData(7, 2, ["NUll"] + TDvalues)):
-                print("Inserted Data")
-            else:
-                print("Failed to insert data")
+            #print("ThermoDynamics Tank", TDvalues)
+            #if(db.insertData(7, 2, ["NUll"] + TDvalues)):
+            #    print("Inserted Data")
+            #else:
+            #    print("Failed to insert data")
 
             #print("Eagle Eye", EEvalues)
             #if(db.insertData(8, 8, ["NUll"] + EEvalues)):
@@ -100,6 +140,7 @@ try:
             #    print("Failed to insert data")
         except Exception as e:
             print(e)
+        q.task_done()
 except KeyboardInterrupt:
     print "\nexiting"
     client.disconnect()
