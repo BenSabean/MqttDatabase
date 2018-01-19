@@ -13,19 +13,21 @@ class ModuleThread(Thread):
         self.index = myIndex
         self.interval = myInterval
         self.sensors = mySensors
-    
+
+    def setInterval(self, myInterval):
+        self.interval = myInterval
+
     def run(self):
         time.sleep(1)
         while True:
+            #print("Module ID:", self.index)
+            #print("Sleeping for " + `self.interval` + " minute(s)")
             time.sleep(60*self.interval)
             q.join()
             print("Attempting to log data...")
             print datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            
-            #q.put([self.index, self.sensors])
-            q.put(dict([('index', self.index), ('sensors', self.sensors)]))
-            #self.interval = int(db.getSampleRate(self.index))
 
+            q.put(dict([('index', self.index), ('sensors', self.sensors)]))
 
 with open('config.json') as json_data_file:
     data = json.load(json_data_file)
@@ -53,7 +55,7 @@ def on_message(client, userdata, message):
     elif(message.topic[:27] == "Home/EnergyMonitor/EagleEye"):
         EEvalues[int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
         print("Eagle Eye", EEvalues)
-        if(db.insertData(8, 8, ["NUll"] + EEvalues)):
+        if(db.insertData(0, 8, ["NUll"] + EEvalues)):
             print("Inserted Data")
             EEvalues[0] = None
             EEvalues[1] = None
@@ -102,13 +104,13 @@ print("Subscribing to topic",EEtopic)
 client.subscribe(EEtopic)
 
 print("Spawning thread 1")
-thModule = ModuleThread(1, db.getSampleRate(1), 5)
+thModule = ModuleThread(1, int(db.getSampleRate(1)), 5)
 thModule.daemon = True
 thModule.start()
 threads.append(thModule)
 
 print("Spawning thread 2")
-thModule = ModuleThread(2, db.getSampleRate(2), 2)
+thModule = ModuleThread(2, int(db.getSampleRate(2)), 2)
 thModule.daemon = True
 thModule.start()
 threads.append(thModule)
@@ -117,7 +119,7 @@ data = []
 
 try:
     while(1):
-        #time.sleep(300) # wait
+        # block main thread until queue is populated
         module = q.get()
         data = [PVSvalues, TDvalues, EEvalues]
         print("Writing values to database: " + `module["index"]`)
@@ -130,7 +132,7 @@ try:
 
             for i in range(len(data[module["index"]-1])):
                 data[module["index"]-1][i] = None
-
+            threads[module["index"]-1].setInterval(int(db.getSampleRate(module["index"])))
             #print("ThermoDynamics Tank", TDvalues)
             #if(db.insertData(7, 2, ["NUll"] + TDvalues)):
             #    print("Inserted Data")
