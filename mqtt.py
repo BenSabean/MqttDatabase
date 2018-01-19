@@ -24,6 +24,7 @@ class ModuleThread(Thread):
             
             #q.put([self.index, self.sensors])
             q.put(dict([('index', self.index), ('sensors', self.sensors)]))
+            #self.interval = int(db.getSampleRate(self.index))
 
 
 with open('config.json') as json_data_file:
@@ -43,10 +44,10 @@ TDvalues = [None] * 2
 EEvalues = [None] * 8
 
 def on_message(client, userdata, message):
-    #print("message received " ,str(message.payload.decode("utf-8")))
-    #print("message topic=",message.topic)
-    #print("message qos=",message.qos)
-    #print("message retain flag=",message.retain)
+    print("message received " ,str(message.payload.decode("utf-8")))
+    print("message topic=",message.topic)
+    print("message qos=",message.qos)
+    print("message retain flag=",message.retain)
     if(message.topic[:23] == "AERlab/WaterTanks/Tank1"):
         PVSvalues[int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
     elif(message.topic[:27] == "Home/EnergyMonitor/EagleEye"):
@@ -120,13 +121,16 @@ try:
         module = q.get()
         data = [PVSvalues, TDvalues, EEvalues]
         print("Writing values to database: " + `module["index"]`)
-        #print("PV Solar Boiler", PVSvalues) 
+        print("Values: ", data[module["index"]-1])
         try:
             if(db.insertData(module["index"], module["sensors"], ["NUll"] + data[module["index"]-1])):
        	        print("Inserted Data")
             else:
                 print("Failed to insert data")
-            
+
+            for i in range(len(data[module["index"]-1])):
+                data[module["index"]-1][i] = None
+
             #print("ThermoDynamics Tank", TDvalues)
             #if(db.insertData(7, 2, ["NUll"] + TDvalues)):
             #    print("Inserted Data")
