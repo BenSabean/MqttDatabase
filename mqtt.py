@@ -20,8 +20,8 @@ class ModuleThread(Thread):
     def run(self):
         time.sleep(1)
         while True:
-            #print("Module ID:", self.index)
-            #print("Sleeping for " + `self.interval` + " minute(s)")
+            print("Module ID:", self.index)
+            print("Sleeping for " + `self.interval` + " minute(s)")
             time.sleep(60*self.interval)
             q.join()
             print("Attempting to log data...")
@@ -103,17 +103,20 @@ client.subscribe(TDtopic)
 print("Subscribing to topic",EEtopic)
 client.subscribe(EEtopic)
 
-print("Spawning thread 1")
-thModule = ModuleThread(1, int(db.getSampleRate(1)), 5)
-thModule.daemon = True
-thModule.start()
-threads.append(thModule)
+print("Number of devices: " + `db.getDeviceCount()`)
 
-print("Spawning thread 2")
-thModule = ModuleThread(2, int(db.getSampleRate(2)), 2)
-thModule.daemon = True
-thModule.start()
-threads.append(thModule)
+for i in range(0, db.getDeviceCount()):
+    print("Spawning thread " + `i+1`)
+    thModule = ModuleThread(i+1, int(db.getSampleRate(i+1)), db.getSensorCount(i+1))
+    thModule.daemon = True
+    thModule.start()
+    threads.append(thModule)
+
+#print("Spawning thread 2")
+#thModule = ModuleThread(2, int(db.getSampleRate(2)), 2)
+#thModule.daemon = True
+#thModule.start()
+#threads.append(thModule)
 
 data = []
 
@@ -132,18 +135,9 @@ try:
 
             for i in range(len(data[module["index"]-1])):
                 data[module["index"]-1][i] = None
-            threads[module["index"]-1].setInterval(int(db.getSampleRate(module["index"])))
-            #print("ThermoDynamics Tank", TDvalues)
-            #if(db.insertData(7, 2, ["NUll"] + TDvalues)):
-            #    print("Inserted Data")
-            #else:
-            #    print("Failed to insert data")
 
-            #print("Eagle Eye", EEvalues)
-            #if(db.insertData(8, 8, ["NUll"] + EEvalues)):
-            #    print("Inserted Data")
-            #else:
-            #    print("Failed to insert data")
+            threads[module["index"]-1].setInterval(int(db.getSampleRate(module["index"])))
+
         except Exception as e:
             print(e)
         q.task_done()

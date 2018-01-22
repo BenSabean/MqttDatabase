@@ -37,11 +37,11 @@ class DbManager:
         except:
             pass
 
-    def __getSensorCount(self, deviceName):
+    def getSensorCount(self, DeviceID):
         try:
-            self.c.execute("SELECT Count(*) FROM `" + self.addressTable + "` WHERE "
-                           + "`Table Name` = \"" + deviceName + "\"")
-            return self.c.fetchall()[0][0]
+            self.c.execute("SELECT Sensors FROM `" + self.deviceTable + "` WHERE "
+                           + "`Device ID` = \"" + deviceID + "\"")
+            return int(self.c.fetchall()[0][0])
         except:
             pass
 
@@ -84,4 +84,10 @@ class DbManager:
             return self.c.fetchall()[0][0]
         except:
             pass
-    
+
+    def getDeviceCount(self):
+        try:
+             self.c.execute("SELECT COUNT(*) FROM `" + self.deviceTable + "` WHERE `Device ID` > 0")
+             return int(self.c.fetchall()[0][0])
+        except:
+            pass
