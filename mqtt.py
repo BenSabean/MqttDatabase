@@ -128,7 +128,10 @@ for i in range(0, db.getDeviceCount()):
 
 # List to hold data for all DAQ modules.
 data = []
-
+#for x in range(0, db.getDeviceCount()):
+#    print("Device ID", x)
+#    print("Num Sensors: ", `db.getSensorCount(x)`)
+#    data.append([None] * db.getSensorCount(x))
 try:
     while(1):
         # Block main thread until queue is populated.
