@@ -25,8 +25,6 @@ class ModuleThread(Thread):
     def run(self):
         time.sleep(1)
         while True:
-            #print("Module ID:", self.index)
-            #print("Sleeping for " + `self.interval` + " minute(s)")
             time.sleep(60*self.interval)
             q.join()
             print("Attempting to log data...")
@@ -47,13 +45,8 @@ q = Queue()     # container for sending identifying info to main thread
 
 # MQTT subscribing topics
 topic = "AERlab/WaterTanks/Tank1/Temperature/Data/+"
-TDtopic = "AERlab/WaterTanks/Tank2/Temperature/Data/+" 
+TDtopic = "AERlab/WaterTanks/Tank2/Temperature/Data/+"
 EEtopic = "Home/EnergyMonitor/EagleEye/Current/Data/+"
-
-# containers to hold data
-PVSvalues = [None] * 5
-TDvalues = [None] * 2
-EEvalues = [None] * 8
 
 # Function to be run everytime a message is recieved through MQTT
 def on_message(client, userdata, message):
@@ -62,25 +55,25 @@ def on_message(client, userdata, message):
     print("message qos=",message.qos)
     print("message retain flag=",message.retain)
     if(message.topic[:23] == "AERlab/WaterTanks/Tank1"):    # PV solar data
-        PVSvalues[int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+        data[1][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
     elif(message.topic[:27] == "Home/EnergyMonitor/EagleEye"):   #Eagle Eye data
-        EEvalues[int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+        data[0][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
         print("Eagle Eye", EEvalues)
         if(db.insertData(0, 8, ["NUll"] + EEvalues)):
             print("Inserted Data")
             # Reset container's values
-            EEvalues[0] = None
-            EEvalues[1] = None
-            EEvalues[2] = None
-            EEvalues[3] = None
-            EEvalues[4] = None
-            EEvalues[5] = None
-            EEvalues[6] = None
-            EEvalues[7] = None
+            data[0][0] = None
+            data[0][1] = None
+            data[0][2] = None
+            data[0][3] = None
+            data[0][4] = None
+            data[0][5] = None
+            data[0][6] = None
+            data[0][7] = None
         else:
             print("Failed to insert data")
     else:     # Thermodynamics data
-        TDvalues[int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+        data[2][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
 
 # Function runs when connect function returns.
 def on_connect(client, userdata, flags, rc):
@@ -128,20 +121,21 @@ for i in range(0, db.getDeviceCount()):
 
 # List to hold data for all DAQ modules.
 data = []
-#for x in range(0, db.getDeviceCount()):
-#    print("Device ID", x)
-#    print("Num Sensors: ", `db.getSensorCount(x)`)
-#    data.append([None] * db.getSensorCount(x))
+for x in range(0, db.getDeviceCount()+1):
+    print("Device ID", x)
+    print("Num Sensors: ", `db.getSensorCount(x)`)
+    data.append([None] * db.getSensorCount(x))
+    print("container", data[x])
 try:
     while(1):
         # Block main thread until queue is populated.
         module = q.get()
-        data = [PVSvalues, TDvalues, EEvalues]   # Update data list.
+        #data = [PVSvalues, TDvalues, EEvalues]   # Update data list.
         print("Writing values to database: " + `module["index"]`)
-        print("Values: ", data[module["index"]-1])
+        print("Values: ", data[module["index"]])
         try:
             # Attempt to insert data into database.
-            if(db.insertData(module["index"], module["sensors"], ["NUll"] + data[module["index"]-1])):
+            if(db.insertData(module["index"], module["sensors"], ["NUll"] + data[module["index"]])):
        	        print("Inserted Data")
             else:
                 # Something sent wrong. Most likely the data was not recieved in time

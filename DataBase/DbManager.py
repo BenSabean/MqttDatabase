@@ -54,7 +54,6 @@ class DbManager:
     # Returns The number of sensors registered to a device.
     def getSensorCount(self, DeviceID):
         try:
-            print("Device ID", DeviceID) 
             self.c.execute("SELECT `Sensors` FROM `" + self.deviceTable + "` WHERE "
                            + "`Device ID` = " + `DeviceID`)
             return int(self.c.fetchall()[0][0])
