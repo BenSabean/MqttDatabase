@@ -25,8 +25,9 @@ class ModuleThread(Thread):
     def run(self):
         time.sleep(1)
         while True:
+            print("Sleeping for " + `self.interval` + " minute(s)")
             time.sleep(60*self.interval)
-            q.join()
+            #q.join()
             print("Attempting to log data...")
             print datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -50,16 +51,17 @@ EEtopic = "Home/EnergyMonitor/EagleEye/Current/Data/+"
 
 # Function to be run everytime a message is recieved through MQTT
 def on_message(client, userdata, message):
-    print("message received " ,str(message.payload.decode("utf-8")))
-    print("message topic=",message.topic)
-    print("message qos=",message.qos)
-    print("message retain flag=",message.retain)
+    #print("message received " ,str(message.payload.decode("utf-8")))
+    #print("message topic=",message.topic)
+    #print("message qos=",message.qos)
+    #print("message retain flag=",message.retain)
     if(message.topic[:23] == "AERlab/WaterTanks/Tank1"):    # PV solar data
         data[1][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+        print("PV Solar: ", data[1])
     elif(message.topic[:27] == "Home/EnergyMonitor/EagleEye"):   #Eagle Eye data
         data[0][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
-        print("Eagle Eye", EEvalues)
-        if(db.insertData(0, 8, ["NUll"] + EEvalues)):
+        print("Eagle Eye", data[0])
+        if(db.insertData(0, 8, ["NUll"] + data[0])):
             print("Inserted Data")
             # Reset container's values
             data[0][0] = None
@@ -74,6 +76,7 @@ def on_message(client, userdata, message):
             print("Failed to insert data")
     else:     # Thermodynamics data
         data[2][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+        print("Thermodynamics: ", data[2])
 
 # Function runs when connect function returns.
 def on_connect(client, userdata, flags, rc):
@@ -132,7 +135,7 @@ try:
         module = q.get()
         #data = [PVSvalues, TDvalues, EEvalues]   # Update data list.
         print("Writing values to database: " + `module["index"]`)
-        print("Values: ", data[module["index"]])
+        print("Values: ", data[int(module["index"])])
         try:
             # Attempt to insert data into database.
             if(db.insertData(module["index"], module["sensors"], ["NUll"] + data[module["index"]])):
@@ -141,16 +144,18 @@ try:
                 # Something sent wrong. Most likely the data was not recieved in time
                 # or some of the data was missing.
                 print("Failed to insert data")
-
-            # Reset data for the DAQ module that was just inserted (or failed).
-            for i in range(len(data[module["index"]-1])):
-                data[module["index"]-1][i] = None
-
-            # Set DAQ module's sample rate to the sample rate currently in the database.
-            threads[module["index"]-1].setInterval(int(db.getSampleRate(module["index"])))
-
         except Exception as e:
             print(e)
+
+        # Reset data for the DAQ module that was just inserted (or failed).
+        for i in range(len(data[module["index"]])):
+            data[module["index"]][i] = None
+
+        # Set DAQ module's sample rate to the sample rate currently in the database.
+        threads[module["index"]-1].setInterval(int(db.getSampleRate(module["index"])))
+
+        #except Exception as e:
+        #    print(e)
         q.task_done()     # Remove item from the queue.
 
 # Allow program to disconnect gracefully when recieving a CTRL-C interrupt.
