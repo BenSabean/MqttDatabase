@@ -131,3 +131,23 @@ class DbManager:
              return int(self.c.fetchall()[0][0])
         except:
             pass
+
+    # Find all IDs for registered devices in the database
+    # Return A double indexed list containing all registered device IDs
+    def getAllIds(self):
+         try:
+             self.c.execute("SELECT `Device ID` FROM `" + self.deviceTable + "`")
+             return self.c.fetchall()
+         except:
+             pass
+
+    # Insert a new device into the device table
+    # Param id The ID of the device
+    # Param sensors The number of sensors attached to the DAQ module
+    # Return True if successfully inserted, False otherwise
+    def createDevice(self, id, sensors):
+        data = [id, "\"device "  +  str(id) + "\"", "10", str(sensors)]
+        if(self.db.insertData(self.deviceTable, data)):
+            return True
+        else:
+            return False

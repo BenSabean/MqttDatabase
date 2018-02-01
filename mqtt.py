@@ -27,11 +27,12 @@ class ModuleThread(Thread):
         while True:
             print("Sleeping for " + `self.interval` + " minute(s)")
             time.sleep(60*self.interval)
-            #q.join()
             print("Attempting to log data...")
             print datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
+            lock.acquire()
             q.put(dict([('index', self.index), ('sensors', self.sensors)]))
+            lock.release()
 
 # Get info from config file
 with open('config.json') as json_data_file:
@@ -43,6 +44,7 @@ db = DbManager(data["mysql"]["host"], data["mysql"]["user"],
 
 threads = []    # list of DAQ module threads
 q = Queue()     # container for sending identifying info to main thread
+lock = threading.Lock()     # Lock for synchronizing threads
 
 # MQTT subscribing topics
 topic = "AERlab/WaterTanks/Tank1/Temperature/Data/+"

@@ -20,9 +20,8 @@ class DataEntry:
                 query += x + ","
             query = query[:-1]
             query += ')'
-        except:
+        except Exception as e:
             pass
-
         return query
 
     # Close the connection to the database.
@@ -46,7 +45,6 @@ class DataEntry:
             arg.append(n)
 
         try:
-            print("Creating query")
             self.c.execute(self.createInsertQuery(table,arg))
             self.db.commit()
             return True
