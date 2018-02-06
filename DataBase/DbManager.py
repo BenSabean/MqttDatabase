@@ -151,3 +151,16 @@ class DbManager:
             return True
         else:
             return False
+
+    # Get the contents of the selected table.
+    # Param table The table whose contents will be found.
+    # Param lowerBound The oldest data to be retrieved.
+    # Param upperBound The newest data to be retrieved.
+    # Return the contents of the table as a double indexed list.
+    def getIntervalData(self, table, lowerBound, upperBound):
+        try:
+            self.c.execute("SELECT * FROM `" + table + "` WHERE `TimeStamp` BETWEEN \"" + lowerBound +
+                       "\" AND \"" + upperBound + "\"" )
+        except Exception as e:
+            print(e)
+        return self.c.fetchall()

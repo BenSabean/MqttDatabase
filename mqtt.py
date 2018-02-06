@@ -6,6 +6,7 @@ import paho.mqtt.client as mqtt #MQTT client
 import time
 import datetime
 import json
+import logging
 
 # Thread to handle the sample time for each connected DAQ Module
 class ModuleThread(Thread):
@@ -18,25 +19,38 @@ class ModuleThread(Thread):
 
     # Set a new sample rate for the DAQ module
     def setInterval(self, myInterval):
-        self.interval = myInterval
+        self.tmp = self.interval
+        try:
+            self.interval = myInterval
+        except Exception as e:
+            self.interval = self.tmp
+            logging.info("Threading error: Setting sample rate.")
+            logging.debug(str(e) + "\n")
 
     # Sleep for designated Sample time then send identifying info to main
     # thread
     def run(self):
         time.sleep(1)
         while True:
-            print("Sleeping for " + `self.interval` + " minute(s)")
-            time.sleep(60*self.interval)
-            print("Attempting to log data...")
-            print datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            try:
+                print("Sleeping for " + `self.interval` + " minute(s)")
+                time.sleep(60*self.interval)
+                print("Attempting to log data...")
+                print datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-            lock.acquire()
-            q.put(dict([('index', self.index), ('sensors', self.sensors)]))
-            lock.release()
+                lock.acquire()
+                q.put(dict([('index', self.index), ('sensors', self.sensors)]))
+                lock.release()
+            except Exception as e:
+                logging.info("Threading Error: Main routine")
+                logging.debug(str(e) + "\n")
 
 # Get info from config file
 with open('config.json') as json_data_file:
     data = json.load(json_data_file)
+
+# Create error log file
+logging.basicConfig(filename='error.log',format='%(asctime)s %(message)s', level=logging.DEBUG)
 
 # Create new instance of DbManager class
 db = DbManager(data["mysql"]["host"], data["mysql"]["user"],
@@ -47,9 +61,9 @@ q = Queue()     # container for sending identifying info to main thread
 lock = threading.Lock()     # Lock for synchronizing threads
 
 # MQTT subscribing topics
-topic = "AERlab/WaterTanks/Tank1/Temperature/Data/+"
-TDtopic = "AERlab/WaterTanks/Tank2/Temperature/Data/+"
-EEtopic = "Home/EnergyMonitor/EagleEye/Current/Data/+"
+topic = "1/Data/+"
+TDtopic = "2/Data/+"
+EEtopic = "0/Data/+"
 
 # Function to be run everytime a message is recieved through MQTT
 def on_message(client, userdata, message):
@@ -57,12 +71,16 @@ def on_message(client, userdata, message):
     #print("message topic=",message.topic)
     #print("message qos=",message.qos)
     #print("message retain flag=",message.retain)
-    if(message.topic[:23] == "AERlab/WaterTanks/Tank1"):    # PV solar data
-        data[1][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+    if(message.topic[:7] == topic[:-1]):    # PV solar data
+        try:
+            data[1][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+        except Exception as e:
+            logging.info("Error storing data for device 1")
+            logging.debug(str(e) + "\n")
         print("PV Solar: ", data[1])
-    elif(message.topic[:27] == "Home/EnergyMonitor/EagleEye"):   #Eagle Eye data
+    elif(message.topic[:7] == EEtopic[:-1]):   #Eagle Eye data
         data[0][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
-        print("Eagle Eye", data[0])
+        print("Eagle Eye: ", data[0])
         if(db.insertData(0, 8, ["NUll"] + data[0])):
             print("Inserted Data")
             # Reset container's values
@@ -77,7 +95,11 @@ def on_message(client, userdata, message):
         else:
             print("Failed to insert data")
     else:     # Thermodynamics data
-        data[2][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+        try:
+            data[2][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+        except Exception as e:
+            logging.info("Error storing data for device 2")
+            logging.debug(str(e) + "\n")
         print("Thermodynamics: ", data[2])
 
 # Function runs when connect function returns.
@@ -90,6 +112,7 @@ def on_connect(client, userdata, flags, rc):
 
     else:   # Something went wrong.
         print("Connection failed")
+        logging.info("Could not connect to MQTT broker.")
         print("Attempting reconnect")
         connect(broker_address)
 
@@ -119,18 +142,26 @@ client.subscribe(EEtopic)
 # Create threads to handle sample rates of DAQ modules.
 for i in range(0, db.getDeviceCount()):
     print("Spawning thread " + `i+1`)
-    thModule = ModuleThread(i+1, int(db.getSampleRate(i+1)), db.getSensorCount(i+1))
-    thModule.daemon = True
-    thModule.start()
-    threads.append(thModule)
+    try:
+        thModule = ModuleThread(i+1, int(db.getSampleRate(i+1)), db.getSensorCount(i+1))
+        thModule.daemon = True
+        thModule.start()
+        threads.append(thModule)
+    except Exception as e:
+        logging.info("Error while spawning threads with id " + `i+1` + ".")
+        logging.debug(str(e) + "\n")
 
 # List to hold data for all DAQ modules.
 data = []
 for x in range(0, db.getDeviceCount()+1):
-    print("Device ID", x)
-    print("Num Sensors: ", `db.getSensorCount(x)`)
-    data.append([None] * db.getSensorCount(x))
-    print("container", data[x])
+    try:
+        print("Device ID", x)
+        print("Num Sensors: ", `db.getSensorCount(x)`)
+        data.append([None] * db.getSensorCount(x))
+        print("container", data[x])
+    except Exception as e:
+        logging.info("Error while creating data container for device id " + `x` + ".")
+        logging.debug(str(e) + "\n")
 try:
     while(1):
         # Block main thread until queue is populated.
@@ -147,17 +178,21 @@ try:
                 # or some of the data was missing.
                 print("Failed to insert data")
         except Exception as e:
-            print(e)
+                logging.info("Error while inserting data.")
+                logging.debug(str(e) + "\n")
+
 
         # Reset data for the DAQ module that was just inserted (or failed).
         for i in range(len(data[module["index"]])):
             data[module["index"]][i] = None
 
         # Set DAQ module's sample rate to the sample rate currently in the database.
-        threads[module["index"]-1].setInterval(int(db.getSampleRate(module["index"])))
+        try:
+            threads[module["index"]-1].setInterval(int(db.getSampleRate(module["index"])))
+        except Exception as e:
+            logging.info("Error sending sample rate to thread.")
+            logging.debug(str(e) + "\n")
 
-        #except Exception as e:
-        #    print(e)
         q.task_done()     # Remove item from the queue.
 
 # Allow program to disconnect gracefully when recieving a CTRL-C interrupt.
