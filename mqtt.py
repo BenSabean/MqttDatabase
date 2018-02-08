@@ -61,26 +61,19 @@ threads = []    # list of DAQ module threads
 q = Queue()     # container for sending identifying info to main thread
 lock = threading.Lock()     # Lock for synchronizing threads
 
-# MQTT subscribing topics
-#topic = "1/Data/+"
-#TDtopic = "2/Data/+"
-#EEtopic = "0/Data/+"
-
 # Function to be run everytime a message is recieved through MQTT
 def on_message(client, userdata, message):
     #print("message received " ,str(message.payload.decode("utf-8")))
-    #print("message topic=",message.topic[:7])
+    #print("message topic=",message.topic)
     #print("message qos=",message.qos)
     #print("message retain flag=",message.retain)
-    if(message.topic[:7] == topic[1][:-1]):    # PV solar data
-        try:
-            data[1][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
-        except Exception as e:
-            logging.info("Error storing data for device 1")
-            logging.debug(str(e) + "\n")
-        print("PV Solar: ", data[1])
-    elif(message.topic[:7] == topic[0][:-1]):   #Eagle Eye data
-        data[0][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+    try:
+        data[int(message.topic[0])][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+    except Exception as e:
+        logging.info("Error storing data for device 1")
+        logging.debug(str(e) + "\n")
+    print("Device ID " + str(message.topic[0]) + " : ", data[int(message.topic[0])])
+    if(message.topic[:7] == topic[0][:-1]):   #Eagle Eye data
         print("Eagle Eye: ", data[0])
         if(db.insertData(0, 8, ["NUll"] + data[0])):
             print("Inserted Data")
@@ -95,13 +88,6 @@ def on_message(client, userdata, message):
             data[0][7] = None
         else:
             print("Failed to insert data")
-    else:     # Thermodynamics data
-        try:
-            data[2][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
-        except Exception as e:
-            logging.info("Error storing data for device 2")
-            logging.debug(str(e) + "\n")
-        print("Thermodynamics: ", data[2])
 
 # Function runs when connect function returns.
 def on_connect(client, userdata, flags, rc):
@@ -131,10 +117,13 @@ client.on_message = on_message        # Attach function to callback.
 connect()
 
 client.loop_start() # Start the loop.
+
+# MQTT subscribing topics
 topic = []
 for x in range(0, db.getDeviceCount()+1):
     try:
         topic.append(`x` + "/Data/+")
+        # Subscribe to required topics.
         print("Subscribing to topic",topic[x])
         client.subscribe(topic[x])
     except Exception as e:
@@ -142,14 +131,6 @@ for x in range(0, db.getDeviceCount()+1):
         logging.debug(str(e) + "\n")
         print("Could not create topic")
         sys.exit()
-
-# Subscribe to required topics.
-#print("Subscribing to topic",topic)
-#client.subscribe(topic)
-#print("Subscribing to topic",TDtopic)
-#client.subscribe(TDtopic)
-#print("Subscribing to topic",EEtopic)
-#client.subscribe(EEtopic)
 
 # Create threads to handle sample rates of DAQ modules.
 for i in range(0, db.getDeviceCount()):
