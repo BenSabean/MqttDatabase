@@ -70,7 +70,7 @@ def on_message(client, userdata, message):
     try:
         data[int(message.topic[0])][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
     except Exception as e:
-        logging.info("Error storing data for device 1")
+        logging.info("Error storing data for device " + str(message.topic[0]))
         logging.debug(str(e) + "\n")
     print("Device ID " + str(message.topic[0]) + " : ", data[int(message.topic[0])])
     if(message.topic[:7] == topic[0][:-1]):   #Eagle Eye data
@@ -88,6 +88,7 @@ def on_message(client, userdata, message):
             data[0][7] = None
         else:
             print("Failed to insert data")
+            logging.info("Could not insert Eagle Eye data into database.\n")
 
 # Function runs when connect function returns.
 def on_connect(client, userdata, flags, rc):
@@ -99,7 +100,7 @@ def on_connect(client, userdata, flags, rc):
 
     else:   # Something went wrong.
         print("Connection failed")
-        logging.info("Could not connect to MQTT broker.")
+        logging.info("Could not connect to MQTT broker.\n")
         print("Attempting reconnect")
         connect(broker_address)
 
@@ -143,6 +144,8 @@ for i in range(0, db.getDeviceCount()):
     except Exception as e:
         logging.info("Error while spawning threads with id " + `i+1` + ".")
         logging.debug(str(e) + "\n")
+        print("Could not create threads")
+        sys.exit()
 
 # List to hold data for all DAQ modules.
 data = []
@@ -155,6 +158,8 @@ for x in range(0, db.getDeviceCount()+1):
     except Exception as e:
         logging.info("Error while creating data container for device id " + `x` + ".")
         logging.debug(str(e) + "\n")
+        print("Could not create data containers")
+        sys.exit()
 try:
     while(1):
         # Block main thread until queue is populated.
