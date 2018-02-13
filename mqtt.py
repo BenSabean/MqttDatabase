@@ -67,12 +67,6 @@ def on_message(client, userdata, message):
     #print("message topic=",message.topic)
     #print("message qos=",message.qos)
     #print("message retain flag=",message.retain)
-    try:
-        data[int(message.topic[0])][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
-    except Exception as e:
-        logging.info("Error storing data for device " + str(message.topic[0]))
-        logging.debug(str(e) + "\n")
-    print("Device ID " + str(message.topic[0]) + " : ", data[int(message.topic[0])])
     if(message.topic[:7] == topic[0][:-1]):   #Eagle Eye data
         print("Eagle Eye: ", data[0])
         if(db.insertData(0, 8, ["NUll"] + data[0])):
@@ -89,7 +83,13 @@ def on_message(client, userdata, message):
         else:
             print("Failed to insert data")
             logging.info("Could not insert Eagle Eye data into database.\n")
-
+    try:
+        data[int(message.topic[0])][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+    except Exception as e:
+        logging.info("Error storing data for device " + str(message.topic[0]))
+        logging.debug(str(e) + "\n")
+    print("Device ID " + str(message.topic[0]) + " : ", data[int(message.topic[0])])
+    
 # Function runs when connect function returns.
 def on_connect(client, userdata, flags, rc):
 
