@@ -141,6 +141,15 @@ class DbManager:
          except:
              pass
 
+    # Find the highest device id registered in the database.
+    # Return the Highest registered ID as an integer
+    def getMaxID(self):
+        try:
+             self.c.execute("SELECT MAX(`Device ID`) FROM `" + self.deviceTable + "`")
+             return int(self.c.fetchall()[0][0])
+        except:
+             pass
+
     # Insert a new device into the device table
     # Param id The ID of the device
     # Param sensors The number of sensors attached to the DAQ module

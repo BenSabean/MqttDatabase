@@ -149,17 +149,22 @@ for i in range(0, db.getDeviceCount()):
         sys.exit()
 
 # List to hold data for all DAQ modules.
-data = []
+print("Max ID: ", db.getMaxID())
+deviceId = db.getAllIds()
+data = [None] * (db.getMaxID() + 1)
+#data = []
 for x in range(0, db.getDeviceCount()+1):
     try:
         print("Device ID", x)
         print("Num Sensors: ", `db.getSensorCount(x)`)
-        data.append([None] * db.getSensorCount(x))
+        data[int(deviceId[x][0])] = ([None] * db.getSensorCount(x))
+        #data.append([None] * db.getSensorCount(x))
         print("container", data[x])
     except Exception as e:
         logging.info("Error while creating data container for device id " + `x` + ".")
         logging.debug(str(e) + "\n")
         print("Could not create data containers")
+        print(str(e))
         sys.exit()
 try:
     while(1):
