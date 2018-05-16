@@ -68,12 +68,11 @@ def on_message(client, userdata, message):
     #print("message qos=",str(message.qos))
     #print("message retain flag=",str(message.retain))
     try:
-        data[int(message.topic[0])][getSensorNum(message.topic) - 1] = str(message.payload.decode("utf-8"))
+        data[getDeviceID(message.topic)][getSensorNum(message.topic) - 1] = str(message.payload.decode("utf-8"))
         print("Device ID " + str(message.topic[0]) + " : ", data[int(message.topic[0])])
     except Exception as e:
         logging.info("Error storing data for device " + str(message.topic[0]))
         logging.debug(str(e) + "\n")
-    #print("Device ID " + str(message.topic[0]) + " : ", data[int(message.topic[0])])
 
     if(message.topic[:7] == topic[0][:-1]):   #Eagle Eye data
         print("Eagle Eye: ", data[0])
@@ -112,7 +111,7 @@ def connect():
     client.username_pw_set(data["mqtt"]["user"], data["mqtt"]["passwd"])
     client.connect(data["mqtt"]["host"]) # Connect to broker.
 
-#get the sensor number from a topic
+# Get the sensor number from a topic
 def getSensorNum(topic):
     i = -1
     sensorNum = 0
@@ -122,6 +121,17 @@ def getSensorNum(topic):
         i -= 1
         subStr = topic[i:]
     return sensorNum
+
+# Get device ID from a topic
+def getDeviceID(topic):
+    i = 1
+    id = 0
+    subStr = topic[:1]
+    while(subStr.isdigit()):
+        id = int((topic[:i]))
+        i += 1
+        subStr =topic[:i]
+    return id
 
 print("creating new instance")
 client = mqtt.Client("PI_DB")         # Create new instance.
