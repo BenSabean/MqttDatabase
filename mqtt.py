@@ -64,11 +64,13 @@ lock = threading.Lock()     # Lock for synchronizing threads
 # Function to be run everytime a message is recieved through MQTT
 def on_message(client, userdata, message):
     #print("message received " ,str(message.payload.decode("utf-8")))
-    #print("message topic=",message.topic)
-    #print("message qos=",message.qos)
-    #print("message retain flag=",message.retain)
+    #print("message topic=",str(message.topic))
+    #print("message qos=",str(message.qos))
+    #print("message retain flag=",str(message.retain))
     try:
-        data[int(message.topic[0])][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+        #data[int(message.topic[0])][int(message.topic[-1:]) - 1] = str(message.payload.decode("utf-8"))
+        data[int(message.topic[0])][getSensorNum(message.topic) - 1] = str(message.payload.decode("utf-8"))
+        #print("Sensor Number: ", str(sensorNum-1))
     except Exception as e:
         logging.info("Error storing data for device " + str(message.topic[0]))
         logging.debug(str(e) + "\n")
@@ -111,6 +113,17 @@ def connect():
     client.username_pw_set(data["mqtt"]["user"], data["mqtt"]["passwd"])
     client.connect(data["mqtt"]["host"]) # Connect to broker.
 
+#get the sensor number from a topic
+def getSensorNum(topic):
+    i = -1
+    sensorNum = 0
+    subStr = topic[-1:]
+    while(subStr.isdigit()):
+        sensorNum = int((topic[i:]))
+        i -= 1
+        subStr = topic[i:]
+    return sensorNum
+
 print("creating new instance")
 client = mqtt.Client("PI_DB")         # Create new instance.
 client.on_connect = on_connect        # Attach function to callback.
@@ -122,7 +135,8 @@ client.loop_start() # Start the loop.
 
 # MQTT subscribing topics
 topic = []
-for x in range(0, db.getDeviceCount()+1):
+#for x in range(0, db.getDeviceCount()+1): #Normal operating conditions
+for x in range(0,5):
     try:
         topic.append(`x` + "/Data/+")
         # Subscribe to required topics.
