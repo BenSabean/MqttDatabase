@@ -84,7 +84,7 @@ class DbManager:
             query += "`Sensor" + `(i+1)` + "` double,"
         query = query[:-1]
         query += ');'
-
+        print(query)
         try:
             self.c.execute(query)
             return True
@@ -173,3 +173,11 @@ class DbManager:
         except Exception as e:
             print(e)
         return self.c.fetchall()
+
+    def getTTSensor(self, table, mac):
+        try:
+            self.c.execute("SELECT `Sensor Number` FROM `" + table + "` Where `MAC Addr` = \"" + 
+                       mac + "\"")
+        except Exception as e:
+            print(e)
+        return int(self.c.fetchall()[0][0])
