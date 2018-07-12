@@ -44,8 +44,8 @@ def on_disconnect(client, userdata, rc):   #Not Working
 with open('config.json') as json_data_file:
     data= json.load(json_data_file)
 
-db = DbManager(data["mysql"]["host"], data["mysql"]["user"],
-               data["mysql"]["passwd"], data["mysql"]["db"])
+db = DbManager(data["remap-mysql"]["host"], data["remap-mysql"]["user"],
+               data["remap-mysql"]["passwd"], data["remap-mysql"]["db"])
 
 broker_address="192.168.2.151"
 topic = "8/RawData/+"
