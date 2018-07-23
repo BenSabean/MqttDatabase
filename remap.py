@@ -12,7 +12,7 @@ def on_message(client, userdata, message):
         mac = str(message.topic).split('/')[2]
         #print(mac)
         sensor = db.getTTSensor("Think Tank Meta Test", mac)
-        #print(sensor)
+        print(sensor)
         data = str(message.payload.decode("utf-8")).split(':')[0]
         #print(data)
         client.publish("8/Data/Sensor" + str(sensor), data)

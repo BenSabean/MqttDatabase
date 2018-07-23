@@ -5,17 +5,44 @@ from DataEntry import DataEntry
 # for the DataEntry class adding aditional functionality to retrieve number of
 # sensors and sample rate for DAQ Modules.
 class DbManager:
+    #conn = None
+    #self.myHost = None
+    #self.myUser = None
+    #self.myPasswd = None
+    #self.myDb = None
+
     def __init__(self, myHost, myUser, myPasswd, myDb):
 
         # Connect to MySQL batabase.
         self.data=MySQLdb.connect(host=myHost,user=myUser,
         passwd=myPasswd,db=myDb)
+        #self.conn = self.data
+        self.myHost = myHost
+        self.muUser = myUser
+        self.myPasswd = myPasswd
+        self.myDb = myDb
 
         self.c=self.data.cursor()
         self.mydb = myDb
         self.db = DataEntry(self.data, self.c)
         self.deviceTable = "Devices"     # Table of all DAQ modules
         self.addressTable = "Addresses"
+
+    # Send a query to the database and reconnect if the user has
+    # timed out.
+    # Param sql the SQL query to send to the database.
+    # Returns A cursor object containing the query results
+    def __query(self, sql):
+        try:
+            #cursor = self.conn.cursor()
+            self.c.execute(sql)
+        except (AttributeError, MySQLdb.OperationalError):
+            #self.connect()
+            self.data=MySQLdB.connect(host=self.myHost,user=self.myUser,
+            passwd=self.myPasswd,db=self.myDb)
+            self.c = self.data.cursor()
+            self.c.execute(sql)
+        return self.c.fetchall()
 
     # Find all tables for DAQ modules.
     # Returns list of tables.
@@ -176,8 +203,10 @@ class DbManager:
 
     def getTTSensor(self, table, mac):
         try:
-            self.c.execute("SELECT `Sensor Number` FROM `" + table + "` Where `MAC Addr` = \"" + 
-                       mac + "\"")
+            #self.c.execute("SELECT `Sensor Number` FROM `" + table + "` Where `MAC Addr` = \"" + 
+            #           mac + "\"")
+            return self.__query("SELECT `Sensor Number` FROM `" + table + "` Where `MAC Addr` = \"" +
+                       mac + "\"")[0][0]
         except Exception as e:
             print(e)
-        return int(self.c.fetchall()[0][0])
+        #return int(self.c.fetchall()[0][0])
