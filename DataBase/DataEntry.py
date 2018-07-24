@@ -20,6 +20,7 @@ class DataEntry:
                 query += x + ","
             query = query[:-1]
             query += ')'
+            print("Query", query)
         except Exception as e:
             pass
         return query
@@ -48,6 +49,7 @@ class DataEntry:
             self.c.execute(self.createInsertQuery(table,arg))
             self.db.commit()
             return True
-        except:
+        except Exception as e:
             self.db.rollback()
+            print(e)
         return False

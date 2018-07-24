@@ -1,4 +1,5 @@
 import MySQLdb
+#import time
 from DataEntry import DataEntry
 
 # Class to create, insert and manage tables in a database. Acts as a wrapper
@@ -35,6 +36,7 @@ class DbManager:
     def __query(self, sql):
         try:
             #cursor = self.conn.cursor()
+            print(sql)
             self.c.execute(sql)
         except (AttributeError, MySQLdb.OperationalError):
             #self.connect()
@@ -145,7 +147,8 @@ class DbManager:
             self.c.execute("SELECT `Time Interval (Min)` FROM `" + self.deviceTable + "` WHERE "
                            + "`Device ID` = " + `deviceID`)
             return self.c.fetchall()[0][0]
-        except:
+        except Exception as e:
+            print(e)
             pass
 
     # Find the number of Devices registered in the system. This 
@@ -201,6 +204,9 @@ class DbManager:
             print(e)
         return self.c.fetchall()
 
+    # Translate a MAC address to a sensor number for the think tank data logger.
+    # table - The table the MAC-to-Sensor translation is defined.
+    # mac - The mac address to be translated to a sensor number.
     def getTTSensor(self, table, mac):
         try:
             #self.c.execute("SELECT `Sensor Number` FROM `" + table + "` Where `MAC Addr` = \"" + 
@@ -210,3 +216,33 @@ class DbManager:
         except Exception as e:
             print(e)
         #return int(self.c.fetchall()[0][0])
+
+    def getMac(self):
+        try:
+            __oldMac = []
+            __dbMac = self.__query("SELECT `MAC Addr` FROM `Think Tank Meta Test` WHERE 1")
+            for mac in __dbMac:
+                __oldMac.append(mac[0])
+            return __oldMac
+        except Exception as e:
+            print(e)
+
+    def updateMac(self, oldData, newData):
+        try:
+            __newAddrCount = 0
+            if(len(oldData) < len(newData)):
+                __newAddrCount = len(oldData)
+            else:
+                __newAddrCount = len(newData)
+            for i in range(0, __newAddrCount):
+                __query = "UPDATE `Think Tank Meta Test` SET `MAC Addr`=\'"+ newData[i] + "\' WHERE `Sensor Number` = " + `i+1`
+                print(__query)
+                self.c.execute(__query)
+                self.c.fetchall()
+                self.data.commit()
+                #time.sleep(1)
+            return True
+        except Exception as e:
+            print(e)
+            self.data.rollback()
+        return False

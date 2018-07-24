@@ -58,6 +58,7 @@ db = DbManager(data["mysql"]["host"], data["mysql"]["user"],
                data["mysql"]["passwd"], data["mysql"]["db"])
 
 threads = []    # list of DAQ module threads
+alive = []
 q = Queue()     # container for sending identifying info to main thread
 lock = threading.Lock()     # Lock for synchronizing threads
 
@@ -70,6 +71,7 @@ def on_message(client, userdata, message):
     try:
         data[getDeviceID(message.topic)][getSensorNum(message.topic) - 1] = str(message.payload.decode("utf-8"))
         print("Device ID " + str(message.topic[0]) + " : ", data[int(message.topic[0])])
+        alive[int(message.topic[0])] = True
     except Exception as e:
         logging.info("Error storing data for device " + str(message.topic[0]))
         logging.debug(str(e) + "\n")
@@ -133,6 +135,12 @@ def getDeviceID(topic):
         subStr =topic[:i]
     return id
 
+def padData(id):
+    padVal = '-127.0'
+    for i in range(0, len(data[id])):
+        if(data[id][i] == None):
+            data[id][i] = padVal
+
 print("creating new instance")
 client = mqtt.Client("PI_DB")         # Create new instance.
 client.on_connect = on_connect        # Attach function to callback.
@@ -171,6 +179,10 @@ for i in range(0, db.getDeviceCount()):
         print("Could not create threads")
         sys.exit()
 
+for i in range(0, db.getDeviceCount()+1): # Flag to indicate if device is alive
+       alive.append(False)
+print alive
+
 # List to hold data for all DAQ modules.
 print("Max ID: ", db.getMaxID())
 deviceId = db.getAllIds()
@@ -197,13 +209,19 @@ try:
         print("Writing values to database: " + `module["index"]`)
         print("Values: ", data[int(module["index"])])
         try:
-            # Attempt to insert data into database.
-            if(db.insertData(module["index"], module["sensors"], ["NUll"] + data[module["index"]])):
-       	        print("Inserted Data")
+            # Attempt to insert data into database if the device is online.
+            if(alive[module["index"]]):
+                padData(module["index"])    # Pad disconnected sensor values with an obvioulsy wrong value
+                if(db.insertData(module["index"], module["sensors"], ["NUll"] + data[module["index"]])):
+       	            print("Inserted Data")
+                else:
+                    # Something sent wrong. Most likely the data was not recieved in time
+                    # or some of the data was missing.
+                    print("Failed to insert data")
+                alive[module["index"]] = False
             else:
-                # Something sent wrong. Most likely the data was not recieved in time
-                # or some of the data was missing.
-                print("Failed to insert data")
+                print("Device is offline")
+                print(alive)
         except Exception as e:
                 logging.info("Error while inserting data.")
                 logging.debug(str(e) + "\n")
