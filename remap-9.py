@@ -11,11 +11,11 @@ def on_message(client, userdata, message):
     try:
         mac = str(message.topic).split('/')[2]
         #print(mac)
-        sensor = db.getTTSensor("Think Tank Meta Test", mac)
+        sensor = db.getTTSensor("Think Tank Meta 2", mac)
         print(sensor)
         data = str(message.payload.decode("utf-8")).split(':')[0]
         #print(data)
-        client.publish("8/Data/Sensor" + str(sensor), data)
+        client.publish("9/Data/Sensor" + str(sensor), data)
     except Exception as e:
         print(e)
 
@@ -48,11 +48,11 @@ db = DbManager(data["remap-mysql"]["host"], data["remap-mysql"]["user"],
                data["remap-mysql"]["passwd"], data["remap-mysql"]["db"])
 
 broker_address="127.0.0.1"
-topic = "8/RawData/+"
+topic = "9/RawData/+"
 isRunning = True
 
 print("creating new instance")
-client = mqtt.Client("Python1") #create new instance
+client = mqtt.Client("remap9") #create new instance
 client.on_connect = on_connect        #attach function to callback
 client.on_disconnect = on_disconnect  #attach function to callback
 client.on_message = on_message        #attach function to callback
