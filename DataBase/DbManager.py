@@ -207,6 +207,7 @@ class DbManager:
     # Translate a MAC address to a sensor number for the think tank data logger.
     # table - The table the MAC-to-Sensor translation is defined.
     # mac - The mac address to be translated to a sensor number.
+    # return - The MAC-to-Sensor translation.
     def getTTSensor(self, table, mac):
         try:
             #self.c.execute("SELECT `Sensor Number` FROM `" + table + "` Where `MAC Addr` = \"" + 
@@ -217,17 +218,27 @@ class DbManager:
             print(e)
         #return int(self.c.fetchall()[0][0])
 
-    def getMac(self):
+    # Get a list of MOC addresses that are currently in the database.
+    # return - A list of MAC addresses that are currently in the database.
+    def getMac(self, table):
         try:
             __oldMac = []
-            __dbMac = self.__query("SELECT `MAC Addr` FROM `Think Tank Meta Test` WHERE 1")
+            ##__table = self.__decodeID(deviceID)
+            #__table = "Think Tank 2"
+            print(table)
+            __dbMac = self.__query("SELECT `MAC Addr` FROM `" + table + "` WHERE 1")
             for mac in __dbMac:
                 __oldMac.append(mac[0])
             return __oldMac
         except Exception as e:
             print(e)
 
-    def updateMac(self, oldData, newData):
+    # Update the MAC addresses in database and assign an abitrary sensor number.
+    # oldData - The data that is currently in the database.
+    # newData - The data to be put into that database.
+    # table - The meta data table.
+    # return - True if updated successfully, false otherwise.
+    def updateMac(self, table, oldData, newData):
         try:
             __newAddrCount = 0
             if(len(oldData) < len(newData)):
@@ -235,7 +246,7 @@ class DbManager:
             else:
                 __newAddrCount = len(newData)
             for i in range(0, __newAddrCount):
-                __query = "UPDATE `Think Tank Meta Test` SET `MAC Addr`=\'"+ newData[i] + "\' WHERE `Sensor Number` = " + `i+1`
+                __query = "UPDATE `" + table + "` SET `MAC Addr`=\'"+ newData[i] + "\' WHERE `Sensor Number` = " + `i+1`
                 print(__query)
                 self.c.execute(__query)
                 self.c.fetchall()
@@ -246,3 +257,4 @@ class DbManager:
             print(e)
             self.data.rollback()
         return False
+
